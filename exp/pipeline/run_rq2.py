@@ -23,6 +23,8 @@ def main() -> None:
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--adaptation", choices=["lora", "qlora"], required=True)
     parser.add_argument("--skip-if-done", action="store_true")
+    parser.add_argument("--num-gpus", type=int, default=1)
+    parser.add_argument("--gpu-ids", default=None)
     args = parser.parse_args()
 
     key = RunKey(
@@ -42,12 +44,16 @@ def main() -> None:
         "--seed",
         str(args.seed),
     ]
+    train_args = list(common)
     if args.skip_if_done:
-        common.append("--skip-if-done")
+        train_args.append("--skip-if-done")
+    train_args.extend(["--num-gpus", str(args.num_gpus)])
+    if args.gpu_ids:
+        train_args.extend(["--gpu-ids", args.gpu_ids])
 
     _run(
         "exp.finetune.run_axolotl",
-        ["--rq", "2", "--adaptation", args.adaptation, *common],
+        ["--rq", "2", "--adaptation", args.adaptation, *train_args],
     )
     _run(
         "exp.merge.run_merge",

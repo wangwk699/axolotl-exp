@@ -20,3 +20,16 @@ defaults:
   lora_r: 32
   lora_alpha: 64
   lora_dropout: 0.05
+
+# Full-FT 8B on a single shared A100 needs tighter settings.
+adaptation_overrides:
+  full_ft:
+    micro_batch_size: 1
+    gradient_accumulation_steps: 8
+    sample_packing: false
+    eval_sample_packing: false
+  full_ft_multi_gpu:
+    micro_batch_size: 2
+    gradient_accumulation_steps: 4
+    sample_packing: true
+    eval_sample_packing: true

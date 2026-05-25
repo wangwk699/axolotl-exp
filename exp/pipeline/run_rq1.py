@@ -26,6 +26,12 @@ def main() -> None:
     parser.add_argument("--skip-if-done", action="store_true")
     parser.add_argument("--skip-train", action="store_true")
     parser.add_argument("--skip-ptq", action="store_true")
+    parser.add_argument("--num-gpus", type=int, default=2)
+    parser.add_argument(
+        "--gpu-ids",
+        default=None,
+        help="Comma-separated GPU ids (e.g. 0,1). Defaults to 0..num-gpus-1.",
+    )
     args = parser.parse_args()
 
     key = RunKey(
@@ -45,13 +51,17 @@ def main() -> None:
         "--seed",
         str(args.seed),
     ]
+    train_args = list(common)
     if args.skip_if_done:
-        common.append("--skip-if-done")
+        train_args.append("--skip-if-done")
+    train_args.extend(["--num-gpus", str(args.num_gpus)])
+    if args.gpu_ids:
+        train_args.extend(["--gpu-ids", args.gpu_ids])
 
     if not args.skip_train:
         _run_module(
             "exp.finetune.run_axolotl",
-            ["--rq", "1", "--adaptation", "full_ft", *common],
+            ["--rq", "1", "--adaptation", "full_ft", *train_args],
         )
 
     if args.task != "humaneval":

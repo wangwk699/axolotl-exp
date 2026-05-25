@@ -46,6 +46,7 @@ tasks:
     primary_metric: exact_match
     split_train: train
     split_eval: test
+    sequence_len: 1024
   humaneval:
     hf_train: null
     hf_eval: null

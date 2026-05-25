@@ -6,8 +6,8 @@ import argparse
 import os
 import subprocess
 import sys
-from pathlib import Path
 
+from exp.finetune.axolotl_launch import build_train_command, set_visible_gpus
 from exp.registry import ArtifactRegistry, RunKey, get_project_root
 from exp.render_config import render_config
 
@@ -25,8 +25,17 @@ def main() -> None:
     parser.add_argument("--task", required=True)
     parser.add_argument("--optimizer", required=True)
     parser.add_argument("--seed", type=int, default=42)
+    parser.add_argument("--num-gpus", type=int, default=1)
+    parser.add_argument(
+        "--gpu-ids",
+        default=None,
+        help="Comma-separated GPU ids (e.g. 0,1). Defaults to 0..N-1 when unset.",
+    )
     parser.add_argument("--skip-if-done", action="store_true")
     args = parser.parse_args()
+
+    if args.num_gpus < 1:
+        raise ValueError("--num-gpus must be >= 1")
 
     key = RunKey(
         model=args.model,
@@ -41,28 +50,31 @@ def main() -> None:
         print(f"Skip {stage} (already done)")
         return
 
-    cfg_path = render_config(key, args.rq, args.adaptation)
+    set_visible_gpus(args.gpu_ids, args.num_gpus)
+    cfg_path = render_config(
+        key,
+        args.rq,
+        args.adaptation,
+        num_gpus=args.num_gpus,
+    )
     env = os.environ.copy()
     if args.optimizer == "shampoo":
         env["EXP_USE_SHAMPOO"] = "1"
         root = str(get_project_root())
         env["PYTHONPATH"] = root + os.pathsep + env.get("PYTHONPATH", "")
-        launcher = (
-            "from exp.optimizers.shampoo_trainer import apply_shampoo_patch; "
-            "apply_shampoo_patch(); "
-            "import subprocess, sys; "
-            f"sys.exit(subprocess.call(['axolotl', 'train', {str(cfg_path)!r}]))"
-        )
-        cmd = [sys.executable, "-c", launcher]
-    else:
-        cmd = ["axolotl", "train", str(cfg_path)]
 
+    cmd = build_train_command(
+        cfg_path,
+        num_gpus=args.num_gpus,
+        optimizer=args.optimizer,
+    )
     _run(cmd, env=env)
     reg.write_meta(
         key,
         stage,
         axolotl_config=cfg_path,
         command=" ".join(cmd),
+        extra={"num_gpus": args.num_gpus, "gpu_ids": args.gpu_ids or env.get("CUDA_VISIBLE_DEVICES")},
     )
 
 

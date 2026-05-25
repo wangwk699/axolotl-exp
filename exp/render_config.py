@@ -9,6 +9,11 @@ import yaml
 
 from exp.registry import ArtifactRegistry, RunKey, get_project_root, load_yaml_config
 
+FSDP_LAYER_CLS = {
+    "qwen3-8b": "Qwen3DecoderLayer",
+    "llama3-8b": "LlamaDecoderLayer",
+}
+
 
 def _optimizer_block(optimizer: str) -> dict[str, Any]:
     opt_cfg = load_yaml_config("optimizers.yaml")["optimizers"][optimizer]
@@ -30,7 +35,66 @@ def _optimizer_block(optimizer: str) -> dict[str, Any]:
     return block
 
 
-def _base_training_config(key: RunKey, rq: int, adaptation: str) -> dict[str, Any]:
+def _fsdp2_block(*, num_gpus: int, model_key: str | None) -> dict[str, Any]:
+    block: dict[str, Any] = {
+        "fsdp_version": 2,
+        "dp_shard_size": num_gpus,
+        "experimental_skip_move_to_device": True,
+        "fsdp_config": {
+            "offload_params": False,
+            "cpu_ram_efficient_loading": True,
+            "auto_wrap_policy": "TRANSFORMER_BASED_WRAP",
+            "state_dict_type": "FULL_STATE_DICT",
+            "sharding_strategy": "FULL_SHARD",
+            "reshard_after_forward": True,
+            "activation_checkpointing": True,
+        },
+    }
+    if model_key and model_key in FSDP_LAYER_CLS:
+        block["fsdp_config"]["transformer_layer_cls_to_wrap"] = FSDP_LAYER_CLS[model_key]
+    return block
+
+
+def _apply_distributed_training(
+    cfg: dict[str, Any],
+    *,
+    key: RunKey,
+    adaptation: str,
+    num_gpus: int,
+) -> None:
+    if num_gpus < 2:
+        return
+
+    opt_cfg = load_yaml_config("optimizers.yaml")["optimizers"][key.optimizer]
+    needs_fsdp = adaptation in ("full_ft", "full_qat_w4a16") or opt_cfg.get("use_fsdp2")
+    if not needs_fsdp:
+        return
+
+    if "fsdp_version" not in cfg:
+        cfg.update(_fsdp2_block(num_gpus=num_gpus, model_key=key.model))
+    else:
+        cfg["dp_shard_size"] = num_gpus
+        cfg.setdefault("experimental_skip_move_to_device", True)
+        if key.model in FSDP_LAYER_CLS:
+            cfg.setdefault("fsdp_config", {})
+            cfg["fsdp_config"].setdefault(
+                "transformer_layer_cls_to_wrap", FSDP_LAYER_CLS[key.model]
+            )
+
+    # FSDP2 uses fsdp_config.activation_checkpointing, not gradient_checkpointing.
+    cfg["gradient_checkpointing"] = False
+    cfg.pop("gradient_checkpointing_kwargs", None)
+    cfg.setdefault("fsdp_config", {})
+    cfg["fsdp_config"]["activation_checkpointing"] = True
+
+
+def _base_training_config(
+    key: RunKey,
+    rq: int,
+    adaptation: str,
+    *,
+    num_gpus: int = 1,
+) -> dict[str, Any]:
     models = load_yaml_config("models.yaml")
     defaults = models["defaults"]
     model_cfg = models["models"][key.model]
@@ -74,6 +138,16 @@ def _base_training_config(key: RunKey, rq: int, adaptation: str) -> dict[str, An
         "seed": key.seed,
     }
 
+    adaptation_overrides = models.get("adaptation_overrides", {}).get(adaptation, {})
+    cfg.update(adaptation_overrides)
+    if num_gpus >= 2:
+        multi_key = f"{adaptation}_multi_gpu"
+        cfg.update(models.get("adaptation_overrides", {}).get(multi_key, {}))
+
+    task_cfg = load_yaml_config("tasks.yaml")["tasks"][key.task]
+    if task_cfg.get("sequence_len"):
+        cfg["sequence_len"] = task_cfg["sequence_len"]
+
     if model_cfg.get("chat_template"):
         cfg["chat_template"] = model_cfg["chat_template"]
     if model_cfg.get("pad_token"):
@@ -107,19 +181,22 @@ def _base_training_config(key: RunKey, rq: int, adaptation: str) -> dict[str, An
     else:
         raise ValueError(f"Unknown adaptation {adaptation}")
 
-    if key.model == "qwen3-8b" and adaptation in ("lora", "qlora", "full_ft"):
-        cfg.setdefault("fsdp_config", {})
-        cfg["fsdp_config"]["transformer_layer_cls_to_wrap"] = "Qwen3DecoderLayer"
+    _apply_distributed_training(cfg, key=key, adaptation=adaptation, num_gpus=num_gpus)
 
-    task_cfg = load_yaml_config("tasks.yaml")["tasks"][key.task]
     cfg["lm_eval_tasks"] = [task_cfg["lm_eval_task"]]
     cfg["lm_eval_model"] = cfg["output_dir"]
 
     return cfg
 
 
-def render_config(key: RunKey, rq: int, adaptation: str) -> Path:
-    cfg = _base_training_config(key, rq, adaptation)
+def render_config(
+    key: RunKey,
+    rq: int,
+    adaptation: str,
+    *,
+    num_gpus: int = 1,
+) -> Path:
+    cfg = _base_training_config(key, rq, adaptation, num_gpus=num_gpus)
     sub = {
         "full_ft": f"rq{rq}/full_ft",
         "lora": f"rq{rq}/lora",

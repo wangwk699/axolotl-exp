@@ -3,7 +3,10 @@
 from __future__ import annotations
 
 import argparse
+import importlib.util
 import json
+import os
+import shlex
 import subprocess
 from pathlib import Path
 from typing import Any
@@ -11,12 +14,15 @@ from typing import Any
 from exp.registry import ArtifactRegistry, RunKey, load_yaml_config
 
 
+def _vllm_available() -> bool:
+    return importlib.util.find_spec("vllm") is not None
+
+
 def _primary_metric(task: str, results: dict[str, Any]) -> float:
     task_cfg = load_yaml_config("tasks.yaml")["tasks"][task]
     metric = task_cfg["primary_metric"]
     lm_task = task_cfg["lm_eval_task"].replace("/", ",")
 
-    # lm-eval output structure: results["results"][task_name][metric]
     res_block = results.get("results", results)
     for key, vals in res_block.items():
         if lm_task.split("/")[-1] in key or task in key:
@@ -33,34 +39,104 @@ def _primary_metric(task: str, results: dict[str, Any]) -> float:
     raise KeyError(f"Metric {metric} not found in {json.dumps(results)[:500]}")
 
 
-def run_lm_eval(model_path: Path, task: str, output_path: Path) -> dict[str, Any]:
+def _resolve_backend(requested: str | None) -> str:
+    eval_cfg = load_yaml_config("eval.yaml")
+    backend = requested or eval_cfg.get("backend", "vllm")
+    if backend == "vllm" and not _vllm_available():
+        print("vLLM not installed; falling back to hf backend. Install with: uv pip install vllm")
+        return "hf"
+    return backend
+
+
+def _build_lm_eval_cmd(
+    model_path: Path,
+    task: str,
+    output_path: Path,
+    *,
+    backend: str | None = None,
+    batch_size: str | None = None,
+    tensor_parallel_size: int | None = None,
+    gpu_ids: str | None = None,
+) -> list[str]:
+    eval_cfg = load_yaml_config("eval.yaml")
+    backend = _resolve_backend(backend)
     task_cfg = load_yaml_config("tasks.yaml")["tasks"][task]
     lm_task = task_cfg["lm_eval_task"]
-    output_path.parent.mkdir(parents=True, exist_ok=True)
+
+    if backend == "vllm":
+        vcfg = eval_cfg["vllm"]
+        tp = tensor_parallel_size or vcfg.get("tensor_parallel_size", 1)
+        bs = batch_size or str(vcfg.get("batch_size", "auto"))
+        model_args = (
+            f"pretrained={model_path},"
+            f"dtype={vcfg.get('dtype', 'bfloat16')},"
+            f"gpu_memory_utilization={vcfg.get('gpu_memory_utilization', 0.85)},"
+            f"max_model_len={vcfg.get('max_model_len', 4096)},"
+            f"max_gen_toks={vcfg.get('max_gen_toks', 512)},"
+            f"tensor_parallel_size={tp},"
+            f"trust_remote_code={str(vcfg.get('trust_remote_code', True)).lower()}"
+        )
+        max_bs = vcfg.get("max_batch_size")
+        if max_bs is not None:
+            model_args += f",max_batch_size={max_bs}"
+    else:
+        hcfg = eval_cfg["hf"]
+        bs = batch_size or str(hcfg.get("batch_size", 32))
+        model_args = (
+            f"pretrained={model_path},"
+            f"dtype={hcfg.get('dtype', 'bfloat16')},"
+            f"attn_implementation={hcfg.get('attn_implementation', 'flash_attention_2')}"
+        )
 
     cmd = [
         "lm_eval",
+        "run",
         "--model",
-        "hf",
+        backend,
         "--model_args",
-        f"pretrained={model_path},dtype=bfloat16,attn_implementation=flash_attention_2",
+        model_args,
         "--tasks",
         lm_task,
         "--batch_size",
-        "8",
+        bs,
         "--output_path",
         str(output_path),
     ]
-    print("+", " ".join(cmd))
-    subprocess.run(cmd, check=True)
+    return cmd
 
-    # lm-eval writes results_*.json under output_path
+
+def run_lm_eval(
+    model_path: Path,
+    task: str,
+    output_path: Path,
+    *,
+    backend: str | None = None,
+    batch_size: str | None = None,
+    tensor_parallel_size: int | None = None,
+    gpu_ids: str | None = None,
+) -> dict[str, Any]:
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    cmd = _build_lm_eval_cmd(
+        model_path,
+        task,
+        output_path,
+        backend=backend,
+        batch_size=batch_size,
+        tensor_parallel_size=tensor_parallel_size,
+        gpu_ids=gpu_ids,
+    )
+    env = os.environ.copy()
+    if gpu_ids:
+        env["CUDA_VISIBLE_DEVICES"] = gpu_ids
+    print("+", " ".join(shlex.quote(part) for part in cmd))
+    subprocess.run(cmd, check=True, env=env)
+
     result_files = sorted(output_path.glob("**/*.json"))
     if not result_files:
         raise FileNotFoundError(f"No lm-eval output under {output_path}")
     data = json.loads(result_files[-1].read_text(encoding="utf-8"))
     score = _primary_metric(task, data)
-    return {"raw": data, "score": score, "metric": task_cfg["primary_metric"]}
+    return {"raw": data, "score": score, "metric": load_yaml_config("tasks.yaml")["tasks"][task]["primary_metric"]}
 
 
 def main() -> None:
@@ -76,6 +152,10 @@ def main() -> None:
         required=True,
     )
     parser.add_argument("--track", choices=["w8a8", "w4a16", "w4a4"], default=None)
+    parser.add_argument("--backend", choices=["vllm", "hf"], default=None)
+    parser.add_argument("--batch-size", default=None, help="e.g. auto, 32")
+    parser.add_argument("--tensor-parallel-size", type=int, default=None)
+    parser.add_argument("--gpu-ids", default=None, help="CUDA_VISIBLE_DEVICES for eval")
     args = parser.parse_args()
 
     key = RunKey(
@@ -113,7 +193,15 @@ def main() -> None:
         raise FileNotFoundError(f"Model path missing: {model_path}")
 
     eval_out = model_path / "lm_eval_out"
-    metrics = run_lm_eval(model_path, args.task, eval_out)
+    metrics = run_lm_eval(
+        model_path,
+        args.task,
+        eval_out,
+        backend=args.backend,
+        batch_size=args.batch_size,
+        tensor_parallel_size=args.tensor_parallel_size,
+        gpu_ids=args.gpu_ids,
+    )
     out_metrics.write_text(json.dumps(metrics, indent=2), encoding="utf-8")
     reg.write_meta(key, f"eval_{args.stage}", metrics={"score": metrics["score"]})
     print(f"score={metrics['score']}")

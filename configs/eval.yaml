@@ -1,0 +1,17 @@
+# lm-eval defaults (vLLM accelerated inference)
+backend: vllm
+
+vllm:
+  dtype: bfloat16
+  gpu_memory_utilization: 0.85
+  max_model_len: 4096
+  max_gen_toks: 512
+  tensor_parallel_size: 1
+  trust_remote_code: true
+  batch_size: auto
+  max_batch_size: 256
+
+hf:
+  dtype: bfloat16
+  attn_implementation: flash_attention_2
+  batch_size: 32
