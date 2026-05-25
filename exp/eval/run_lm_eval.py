@@ -112,6 +112,9 @@ def _build_lm_eval_cmd(
         "--output_path",
         str(output_path),
     ]
+    num_fewshot = task_cfg.get("num_fewshot")
+    if num_fewshot is not None:
+        cmd.extend(["--num_fewshot", str(num_fewshot)])
     return cmd
 
 
@@ -140,6 +143,10 @@ def run_lm_eval(
     env = os.environ.copy()
     if gpu_ids:
         env["CUDA_VISIBLE_DEVICES"] = gpu_ids
+    eval_cfg = load_yaml_config("eval.yaml")
+    if eval_cfg.get("hf_offline", True):
+        env["HF_HUB_OFFLINE"] = "1"
+        env["HF_DATASETS_OFFLINE"] = "1"
     print("+", " ".join(shlex.quote(part) for part in cmd))
     subprocess.run(cmd, check=True, env=env)
 

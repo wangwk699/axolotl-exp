@@ -1,5 +1,7 @@
 # lm-eval defaults (vLLM accelerated inference)
 backend: vllm
+# Skip HF hub/mirror network during eval when datasets are cached locally
+hf_offline: true
 
 vllm:
   dtype: bfloat16
