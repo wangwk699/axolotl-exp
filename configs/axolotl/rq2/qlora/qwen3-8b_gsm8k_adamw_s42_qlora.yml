@@ -14,7 +14,9 @@ num_epochs: 1
 lr_scheduler: cosine
 bf16: true
 tf32: true
-gradient_checkpointing: false
+gradient_checkpointing: true
+gradient_checkpointing_kwargs:
+  use_reentrant: false
 logging_steps: 1
 warmup_ratio: 0.1
 evals_per_epoch: 2
@@ -25,19 +27,16 @@ seed: 42
 train_on_inputs: false
 optimizer: adamw_torch_fused
 learning_rate: 2.0e-05
-output_dir: /home/wangwenkang/axolotl-exp/artifacts/qwen3-8b/gsm8k/adamw/42/full_ft/fp
-fsdp_version: 2
-dp_shard_size: 2
-experimental_skip_move_to_device: true
-fsdp_config:
-  offload_params: false
-  cpu_ram_efficient_loading: true
-  auto_wrap_policy: TRANSFORMER_BASED_WRAP
-  state_dict_type: FULL_STATE_DICT
-  sharding_strategy: FULL_SHARD
-  reshard_after_forward: true
-  activation_checkpointing: true
-  transformer_layer_cls_to_wrap: Qwen3DecoderLayer
+adapter: qlora
+output_dir: /home/wangwenkang/axolotl-exp/artifacts/qwen3-8b/gsm8k/adamw/42/qlora/lora_unmerged
+lora_r: 32
+lora_alpha: 64
+lora_dropout: 0.05
+lora_target_linear: true
+load_in_4bit: true
+load_in_8bit: false
+bnb_4bit_quant_type: nf4
+bnb_4bit_use_double_quant: true
 lm_eval_tasks:
 - gsm8k
-lm_eval_model: /home/wangwenkang/axolotl-exp/artifacts/qwen3-8b/gsm8k/adamw/42/full_ft/fp
+lm_eval_model: /home/wangwenkang/axolotl-exp/artifacts/qwen3-8b/gsm8k/adamw/42/qlora/lora_unmerged

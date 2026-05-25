@@ -148,7 +148,18 @@ def _base_training_config(
     if task_cfg.get("sequence_len"):
         cfg["sequence_len"] = task_cfg["sequence_len"]
 
-    if model_cfg.get("chat_template"):
+    if key.task == "gsm8k":
+        # lm-eval gsm8k benchmark: raw Question/Answer completion, no chat template
+        cfg["datasets"] = [
+            {
+                "path": str(data_path),
+                "type": "input_output",
+                "ds_type": "json",
+            }
+        ]
+        cfg.pop("chat_template", None)
+        cfg["train_on_inputs"] = False
+    elif model_cfg.get("chat_template"):
         cfg["chat_template"] = model_cfg["chat_template"]
     if model_cfg.get("pad_token"):
         cfg["special_tokens"] = {"pad_token": model_cfg["pad_token"]}

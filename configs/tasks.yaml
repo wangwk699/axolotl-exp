@@ -46,7 +46,8 @@ tasks:
     primary_metric: exact_match
     split_train: train
     split_eval: test
-    sequence_len: 1024
+    sequence_len: 2048  # CoT answers; lm-eval uses max_model_len=4096 at eval
+    num_fewshot: 5  # lm-eval gsm8k default
   humaneval:
     hf_train: null
     hf_eval: null

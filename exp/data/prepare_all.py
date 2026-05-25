@@ -9,7 +9,7 @@ from typing import Any, Callable
 
 from exp.registry import get_project_root, load_yaml_config
 
-Record = dict[str, str]
+Record = dict[str, Any]
 
 
 def _write_jsonl(path: Path, rows: list[Record]) -> None:
@@ -60,12 +60,21 @@ def _multirc(row: dict[str, Any]) -> Record:
 
 
 def _gsm8k(row: dict[str, Any]) -> Record:
-    answer = row["answer"].split("####")[-1].strip()
+    """Match lm-eval gsm8k: Question/Answer completion with full CoT targets."""
+    prompt = f"Question: {row['question']}\nAnswer:"
     return {
-        "instruction": "Solve the grade school math word problem. Give only the final numeric answer.",
-        "input": row["question"],
-        "output": answer,
+        "segments": [
+            {"label": False, "text": prompt},
+            {"label": True, "text": f" {row['answer']}"},
+        ],
     }
+
+
+def _gsm8k_calib_text(row: Record) -> Record:
+    """Flat text for PTQ calib scripts that expect a single text field."""
+    if "segments" in row:
+        return {"text": "".join(seg["text"] for seg in row["segments"])}
+    return row
 
 
 def _commonsenseqa(row: dict[str, Any]) -> Record:
@@ -143,6 +152,8 @@ def prepare_task(task: str, seed: int = 42) -> Path:
     calib_src = train_rows if train_rows else eval_rows
     calib_n = load_yaml_config("tasks.yaml")["calib"]["num_samples"]
     calib = rng.sample(calib_src, min(calib_n, len(calib_src)))
+    if task == "gsm8k":
+        calib = [_gsm8k_calib_text(r) for r in calib]
     calib_root = get_project_root() / "data" / "calib"
     _write_jsonl(calib_root / f"{task}.jsonl", calib)
     return out
