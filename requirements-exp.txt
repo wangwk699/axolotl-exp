@@ -1,4 +1,7 @@
 # Optional dependencies for experiment orchestration (install in .venv)
 distributed-shampoo
 scipy
-vllm
+# vLLM: PyPI default pulls cu130 (needs libcudart.so.13). Match torch cu128 with cu129 wheel:
+#   uv pip install "https://github.com/vllm-project/vllm/releases/download/v0.21.0/vllm-0.21.0+cu129-cp38-abi3-manylinux_2_34_x86_64.whl" \
+#     --extra-index-url https://download.pytorch.org/whl/cu129 --index-strategy unsafe-best-match
+# HF fallback (no vLLM): BACKEND=hf BATCH_SIZE=32 bash scripts/run_eval_smoke.sh 0

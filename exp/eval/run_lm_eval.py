@@ -15,7 +15,15 @@ from exp.registry import ArtifactRegistry, RunKey, load_yaml_config
 
 
 def _vllm_available() -> bool:
-    return importlib.util.find_spec("vllm") is not None
+    if importlib.util.find_spec("vllm") is None:
+        return False
+    try:
+        import vllm  # noqa: F401
+        from vllm import LLM  # noqa: F401
+    except ImportError as exc:
+        print(f"vLLM import failed ({exc}); falling back to hf backend.")
+        return False
+    return True
 
 
 def _primary_metric(task: str, results: dict[str, Any]) -> float:
