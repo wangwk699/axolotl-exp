@@ -1,0 +1,40 @@
+base_model: meta-llama/Meta-Llama-3.1-8B-Instruct
+strict: false
+datasets:
+- path: /home/wangwenkang/axolotl-exp/data/processed/gsm8k/train.jsonl
+  type: alpaca
+  ds_type: json
+val_set_size: 0.05
+sequence_len: 2048
+sample_packing: true
+eval_sample_packing: true
+micro_batch_size: 2
+gradient_accumulation_steps: 4
+num_epochs: 1
+lr_scheduler: cosine
+bf16: true
+tf32: true
+gradient_checkpointing: true
+gradient_checkpointing_kwargs:
+  use_reentrant: false
+logging_steps: 1
+warmup_ratio: 0.1
+evals_per_epoch: 2
+saves_per_epoch: 1
+weight_decay: 0.0
+attn_implementation: flash_attention_2
+seed: 42
+chat_template: llama3
+special_tokens:
+  pad_token: <|eot_id|>
+optimizer: adamw_torch_fused
+learning_rate: 2.0e-05
+adapter: lora
+output_dir: /home/wangwenkang/axolotl-exp/artifacts/llama3-8b/gsm8k/adamw/42/lora/lora_unmerged
+lora_r: 32
+lora_alpha: 64
+lora_dropout: 0.05
+lora_target_linear: true
+lm_eval_tasks:
+- gsm8k
+lm_eval_model: /home/wangwenkang/axolotl-exp/artifacts/llama3-8b/gsm8k/adamw/42/lora/lora_unmerged

@@ -1,0 +1,3 @@
+# Optional dependencies for experiment orchestration (install in .venv)
+distributed-shampoo
+scipy

@@ -1,0 +1,67 @@
+# Downstream task suite (v1.4 plan)
+tasks:
+  sst2:
+    hf_train: SetFit/sst2
+    hf_eval: SetFit/sst2
+    lm_eval_task: glue/sst2
+    primary_metric: acc
+    split_train: train
+    split_eval: validation
+  rte:
+    hf_train: nyu-mll/glue
+    hf_eval: nyu-mll/glue
+    hf_subset: rte
+    lm_eval_task: super_glue/rte
+    primary_metric: acc
+    split_train: train
+    split_eval: validation
+  boolq:
+    hf_train: google/boolq
+    hf_eval: google/boolq
+    lm_eval_task: super_glue/boolq
+    primary_metric: acc
+    split_train: train
+    split_eval: validation
+  multirc:
+    hf_train: super_glue
+    hf_eval: super_glue
+    hf_subset: multirc
+    lm_eval_task: super_glue/multirc
+    primary_metric: f1
+    split_train: train
+    split_eval: validation
+  gsm8k:
+    hf_train: openai/gsm8k
+    hf_eval: openai/gsm8k
+    hf_subset: main
+    lm_eval_task: gsm8k
+    primary_metric: exact_match
+    split_train: train
+    split_eval: test
+  humaneval:
+    hf_train: null
+    hf_eval: null
+    lm_eval_task: humaneval
+    primary_metric: pass@1
+    split_train: null
+    split_eval: null
+  commonsenseqa:
+    hf_train: tau/commonsense_qa
+    hf_eval: tau/commonsense_qa
+    lm_eval_task: commonsense_qa
+    primary_metric: acc
+    split_train: train
+    split_eval: validation
+
+task_list:
+  - sst2
+  - rte
+  - boolq
+  - multirc
+  - gsm8k
+  - humaneval
+  - commonsenseqa
+
+calib:
+  num_samples: 512
+  max_length: 512

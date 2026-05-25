@@ -1,0 +1,26 @@
+optimizers:
+  adamw:
+    axolotl_optimizer: adamw_torch_fused
+    learning_rate: 2.0e-5
+    use_fsdp2: false
+    use_deepspeed: false
+  muon:
+    axolotl_optimizer: muon
+    learning_rate: 2.0e-5
+    use_fsdp2: true
+    fsdp_version: 2
+    use_deepspeed: false
+  shampoo:
+    axolotl_optimizer: adamw_torch_fused  # placeholder; overridden by shampoo hook
+    learning_rate: 2.0e-5
+    use_fsdp2: false
+    use_deepspeed: false
+    shampoo:
+      max_preconditioner_dim: 8192
+      precondition_frequency: 1
+      start_preconditioning_step: 1
+
+seeds:
+  - 42
+  - 43
+  - 44

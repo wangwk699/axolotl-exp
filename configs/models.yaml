@@ -1,0 +1,22 @@
+# Base model registry for v1.4 experiment (8B scale)
+models:
+  llama3-8b:
+    hf_id: meta-llama/Meta-Llama-3.1-8B-Instruct
+    chat_template: llama3
+    pad_token: "<|eot_id|>"
+  qwen3-8b:
+    hf_id: Qwen/Qwen3-8B
+    chat_template: qwen3
+    pad_token: null
+
+defaults:
+  sequence_len: 2048
+  micro_batch_size: 2
+  gradient_accumulation_steps: 4
+  num_epochs: 1
+  learning_rate: 2.0e-5
+  warmup_ratio: 0.1
+  val_set_size: 0.05
+  lora_r: 32
+  lora_alpha: 64
+  lora_dropout: 0.05

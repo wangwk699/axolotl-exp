@@ -1,0 +1,13 @@
+name: smoothquant
+channels:
+  - pytorch
+  - nvidia
+  - conda-forge
+dependencies:
+  - python=3.10
+  - pip
+  - pip:
+      - torch
+      - transformers
+      - accelerate
+      - datasets

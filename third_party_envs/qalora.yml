@@ -1,0 +1,15 @@
+name: qalora
+channels:
+  - pytorch
+  - nvidia
+  - conda-forge
+dependencies:
+  - python=3.10
+  - pip
+  - pip:
+      - torch==2.2.0
+      - transformers
+      - peft
+      - bitsandbytes
+      - accelerate
+      - datasets

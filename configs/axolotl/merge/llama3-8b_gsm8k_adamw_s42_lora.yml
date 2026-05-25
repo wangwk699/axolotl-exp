@@ -1,0 +1,7 @@
+base_model: meta-llama/Meta-Llama-3.1-8B-Instruct
+adapter: lora
+lora_model_dir: /home/wangwenkang/axolotl-exp/artifacts/llama3-8b/gsm8k/adamw/42/lora/lora_unmerged
+output_dir: /home/wangwenkang/axolotl-exp/artifacts/llama3-8b/gsm8k/adamw/42/lora/merged
+lm_eval_tasks:
+- gsm8k
+lm_eval_model: /home/wangwenkang/axolotl-exp/artifacts/llama3-8b/gsm8k/adamw/42/lora/merged
