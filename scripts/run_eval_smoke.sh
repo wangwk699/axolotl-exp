@@ -9,6 +9,7 @@
 #   bash scripts/run_eval_smoke.sh 0          # GPU 0
 #   CUDA_VISIBLE_DEVICES=2 bash scripts/run_eval_smoke.sh
 #   BACKEND=hf BATCH_SIZE=32 bash scripts/run_eval_smoke.sh
+#   GPU_MEM_UTIL=0.70 bash scripts/run_eval_smoke.sh 0
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -27,6 +28,7 @@ BACKEND="${BACKEND:-}"          # default from configs/eval.yaml (vllm)
 BATCH_SIZE="${BATCH_SIZE:-}"    # default: auto for vllm
 GPU_IDS="${1:-${GPU_IDS:-0}}"
 TP_SIZE="${TP_SIZE:-1}"
+GPU_MEM_UTIL="${GPU_MEM_UTIL:-}"
 
 CMD=(
   python -m exp.eval.run_lm_eval
@@ -45,6 +47,9 @@ if [[ -n "$BACKEND" ]]; then
 fi
 if [[ -n "$BATCH_SIZE" ]]; then
   CMD+=(--batch-size "$BATCH_SIZE")
+fi
+if [[ -n "$GPU_MEM_UTIL" ]]; then
+  CMD+=(--gpu-memory-utilization "$GPU_MEM_UTIL")
 fi
 
 echo "=== FP eval (vLLM accelerated) ==="

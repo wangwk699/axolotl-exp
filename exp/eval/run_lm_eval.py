@@ -64,6 +64,7 @@ def _build_lm_eval_cmd(
     backend: str | None = None,
     batch_size: str | None = None,
     tensor_parallel_size: int | None = None,
+    gpu_memory_utilization: float | None = None,
     gpu_ids: str | None = None,
 ) -> list[str]:
     eval_cfg = load_yaml_config("eval.yaml")
@@ -75,10 +76,11 @@ def _build_lm_eval_cmd(
         vcfg = eval_cfg["vllm"]
         tp = tensor_parallel_size or vcfg.get("tensor_parallel_size", 1)
         bs = batch_size or str(vcfg.get("batch_size", "auto"))
+        mem_util = gpu_memory_utilization if gpu_memory_utilization is not None else vcfg.get("gpu_memory_utilization", 0.75)
         model_args = (
             f"pretrained={model_path},"
             f"dtype={vcfg.get('dtype', 'bfloat16')},"
-            f"gpu_memory_utilization={vcfg.get('gpu_memory_utilization', 0.85)},"
+            f"gpu_memory_utilization={mem_util},"
             f"max_model_len={vcfg.get('max_model_len', 4096)},"
             f"max_gen_toks={vcfg.get('max_gen_toks', 512)},"
             f"tensor_parallel_size={tp},"
@@ -121,6 +123,7 @@ def run_lm_eval(
     backend: str | None = None,
     batch_size: str | None = None,
     tensor_parallel_size: int | None = None,
+    gpu_memory_utilization: float | None = None,
     gpu_ids: str | None = None,
 ) -> dict[str, Any]:
     output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -131,6 +134,7 @@ def run_lm_eval(
         backend=backend,
         batch_size=batch_size,
         tensor_parallel_size=tensor_parallel_size,
+        gpu_memory_utilization=gpu_memory_utilization,
         gpu_ids=gpu_ids,
     )
     env = os.environ.copy()
@@ -163,6 +167,7 @@ def main() -> None:
     parser.add_argument("--backend", choices=["vllm", "hf"], default=None)
     parser.add_argument("--batch-size", default=None, help="e.g. auto, 32")
     parser.add_argument("--tensor-parallel-size", type=int, default=None)
+    parser.add_argument("--gpu-memory-utilization", type=float, default=None)
     parser.add_argument("--gpu-ids", default=None, help="CUDA_VISIBLE_DEVICES for eval")
     args = parser.parse_args()
 
@@ -208,6 +213,7 @@ def main() -> None:
         backend=args.backend,
         batch_size=args.batch_size,
         tensor_parallel_size=args.tensor_parallel_size,
+        gpu_memory_utilization=args.gpu_memory_utilization,
         gpu_ids=args.gpu_ids,
     )
     out_metrics.write_text(json.dumps(metrics, indent=2), encoding="utf-8")

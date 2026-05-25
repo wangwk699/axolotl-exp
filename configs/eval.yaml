@@ -3,7 +3,7 @@ backend: vllm
 
 vllm:
   dtype: bfloat16
-  gpu_memory_utilization: 0.85
+  gpu_memory_utilization: 0.75  # leave headroom when ~17GB already in use on GPU
   max_model_len: 4096
   max_gen_toks: 512
   tensor_parallel_size: 1
