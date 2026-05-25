@@ -3,6 +3,9 @@ tasks:
   sst2:
     hf_train: SetFit/sst2
     hf_eval: SetFit/sst2
+    hf_fallback:
+      - id: glue
+        subset: sst2
     lm_eval_task: glue/sst2
     primary_metric: acc
     split_train: train
@@ -11,6 +14,9 @@ tasks:
     hf_train: nyu-mll/glue
     hf_eval: nyu-mll/glue
     hf_subset: rte
+    hf_fallback:
+      - id: super_glue
+        subset: rte
     lm_eval_task: super_glue/rte
     primary_metric: acc
     split_train: train
@@ -18,6 +24,8 @@ tasks:
   boolq:
     hf_train: google/boolq
     hf_eval: google/boolq
+    hf_fallback:
+      - id: boolq
     lm_eval_task: super_glue/boolq
     primary_metric: acc
     split_train: train

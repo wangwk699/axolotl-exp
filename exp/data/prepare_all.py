@@ -93,8 +93,14 @@ CONVERTERS: dict[str, Callable[[dict[str, Any]], Record]] = {
 
 
 def prepare_task(task: str, seed: int = 42) -> Path:
-    from datasets import load_dataset
+    from exp.data.hf_loader import (
+        any_dataset_cached,
+        ensure_hf_env,
+        get_hf_home,
+        load_hf_split,
+    )
 
+    ensure_hf_env()
     cfg = load_yaml_config("tasks.yaml")["tasks"][task]
     if task == "humaneval":
         out = get_project_root() / "data" / "processed" / task
@@ -106,11 +112,25 @@ def prepare_task(task: str, seed: int = 42) -> Path:
         return out
 
     converter = CONVERTERS[task]
-    load_kwargs = {}
-    if cfg.get("hf_subset"):
-        load_kwargs["name"] = cfg["hf_subset"]
-    train_ds = load_dataset(cfg["hf_train"], split=cfg["split_train"], **load_kwargs)
-    eval_ds = load_dataset(cfg["hf_eval"], split=cfg["split_eval"], **load_kwargs)
+    subset = cfg.get("hf_subset")
+    fallbacks = cfg.get("hf_fallback") or []
+    repo_id = cfg["hf_train"]
+
+    source = "cache" if any_dataset_cached(repo_id, subset, fallbacks) else "hub"
+    print(f"  loading {task} from HF {source} ({get_hf_home()})")
+
+    train_ds = load_hf_split(
+        repo_id,
+        cfg["split_train"],
+        subset=subset,
+        fallbacks=fallbacks,
+    )
+    eval_ds = load_hf_split(
+        cfg["hf_eval"],
+        cfg["split_eval"],
+        subset=subset,
+        fallbacks=fallbacks,
+    )
 
     train_rows = [converter(r) for r in train_ds]
     eval_rows = [converter(r) for r in eval_ds]
