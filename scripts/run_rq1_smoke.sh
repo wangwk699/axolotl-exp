@@ -9,6 +9,14 @@
 #
 # Override defaults via env, e.g.:
 #   MODEL=llama3-8b TASK=sst2 SKIP_PTQ=0 bash scripts/run_rq1_smoke.sh 2
+#
+# Debug RQ1 pipeline only (attach to localhost:6001):
+#   DEBUG=1 bash scripts/run_rq1_smoke.sh 2
+#
+# Debug Axolotl train logic in-process (dataset -> model -> train):
+#   bash scripts/debug_axolotl_train.sh
+#   DEBUG=1 bash scripts/debug_axolotl_train.sh   # then attach "Attach Axolotl Train (6001)"
+#   Or F5: "Axolotl Train (in-process)" in .vscode/launch.json
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -34,8 +42,7 @@ PY
 )"
 fi
 
-CMD=(
-  python -m exp.pipeline.run_rq1
+RQ1_ARGS=(
   --model "$MODEL"
   --task "$TASK"
   --optimizer "$OPTIMIZER"
@@ -44,12 +51,23 @@ CMD=(
   --gpu-ids "$GPU_IDS"
 )
 
+if [[ "${DEBUG:-0}" == "1" ]]; then
+  DEBUG_PORT="${DEBUG_PORT:-6001}"
+  CMD=(
+    python -m debugpy --listen "$DEBUG_PORT" --wait-for-client
+    -m exp.pipeline.run_rq1
+    "${RQ1_ARGS[@]}"
+  )
+else
+  CMD=(python -m exp.pipeline.run_rq1 "${RQ1_ARGS[@]}")
+fi
+
 if [[ "$SKIP_PTQ" == "1" ]]; then
   CMD+=(--skip-ptq)
 fi
 
 echo "=== RQ1 smoke run ==="
 echo "  model=$MODEL task=$TASK optimizer=$OPTIMIZER seed=$SEED"
-echo "  num_gpus=$NUM_GPUS gpu_ids=$GPU_IDS skip_ptq=$SKIP_PTQ"
+echo "  num_gpus=$NUM_GPUS gpu_ids=$GPU_IDS skip_ptq=$SKIP_PTQ debug=${DEBUG:-0}"
 echo "+ ${CMD[*]}"
 exec "${CMD[@]}"

@@ -8,6 +8,10 @@ models:
     hf_id: Qwen/Qwen3-8B
     chat_template: qwen3
     pad_token: null
+  qwen3-1.7b:
+    hf_id: Qwen/Qwen3-1.7B
+    chat_template: qwen3
+    pad_token: null
 
 defaults:
   sequence_len: 2048

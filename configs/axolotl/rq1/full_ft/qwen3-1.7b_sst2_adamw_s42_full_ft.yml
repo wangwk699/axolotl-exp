@@ -1,0 +1,33 @@
+base_model: Qwen/Qwen3-1.7B
+strict: false
+datasets:
+- path: /home/wangwenkang/axolotl-exp/data/processed/sst2/train.jsonl
+  type: alpaca
+  ds_type: json
+val_set_size: 0.05
+sequence_len: 2048
+sample_packing: false
+eval_sample_packing: false
+micro_batch_size: 1
+gradient_accumulation_steps: 8
+num_epochs: 1
+lr_scheduler: cosine
+bf16: true
+tf32: true
+gradient_checkpointing: true
+gradient_checkpointing_kwargs:
+  use_reentrant: false
+logging_steps: 1
+warmup_ratio: 0.1
+evals_per_epoch: 2
+saves_per_epoch: 1
+weight_decay: 0.0
+attn_implementation: flash_attention_2
+seed: 42
+chat_template: qwen3
+optimizer: adamw_torch_fused
+learning_rate: 2.0e-05
+output_dir: /home/wangwenkang/axolotl-exp/artifacts/qwen3-1.7b/sst2/adamw/42/full_ft/fp
+lm_eval_tasks:
+- glue/sst2
+lm_eval_model: /home/wangwenkang/axolotl-exp/artifacts/qwen3-1.7b/sst2/adamw/42/full_ft/fp
