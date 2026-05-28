@@ -1,76 +1,93 @@
 # Downstream task suite (v1.4 plan)
 tasks:
+  # --- Trainable tasks (LoRA-One prompt construction) ---
   sst2:
-    hf_train: SetFit/sst2
-    hf_eval: SetFit/sst2
+    hf_train: glue
+    hf_eval: glue
+    hf_subset: sst2
     hf_fallback:
-      - id: glue
-        subset: sst2
+      - id: SetFit/sst2
     lm_eval_task: glue/sst2
     primary_metric: acc
     split_train: train
     split_eval: validation
+    eval_task: sst2
   rte:
-    hf_train: nyu-mll/glue
-    hf_eval: nyu-mll/glue
+    hf_train: super_glue
+    hf_eval: super_glue
     hf_subset: rte
     hf_fallback:
-      - id: super_glue
+      - id: nyu-mll/glue
         subset: rte
     lm_eval_task: super_glue/rte
     primary_metric: acc
     split_train: train
     split_eval: validation
+    eval_task: rte
   boolq:
-    hf_train: google/boolq
-    hf_eval: google/boolq
+    hf_train: super_glue
+    hf_eval: super_glue
+    hf_subset: boolq
     hf_fallback:
-      - id: boolq
+      - id: google/boolq
     lm_eval_task: super_glue/boolq
     primary_metric: acc
     split_train: train
     split_eval: validation
-  multirc:
-    hf_train: super_glue
-    hf_eval: super_glue
-    hf_subset: multirc
-    lm_eval_task: super_glue/multirc
-    primary_metric: f1
-    split_train: train
-    split_eval: validation
-  gsm8k:
-    hf_train: openai/gsm8k
-    hf_eval: openai/gsm8k
-    hf_subset: main
+    eval_task: boolq
+
+  # Math training (eval is GSM8K via lm-eval)
+  metamath:
+    hf_train: meta-math/MetaMathQA
+    hf_eval: meta-math/MetaMathQA
     lm_eval_task: gsm8k
     primary_metric: exact_match
     split_train: train
-    split_eval: test
-    sequence_len: 2048  # CoT answers; lm-eval uses max_model_len=4096 at eval
-    num_fewshot: 5  # lm-eval gsm8k default
+    split_eval: train
+    eval_from_train: true
+    eval_size: 10000
+    sequence_len: 2048
+    num_fewshot: 5
+    eval_task: gsm8k
+
+  # Code training (eval is HumanEval via lm-eval)
+  codefeedback:
+    hf_train: m-a-p/CodeFeedback-Filtered-Instruction
+    hf_eval: m-a-p/CodeFeedback-Filtered-Instruction
+    lm_eval_task: humaneval
+    primary_metric: pass@1
+    split_train: train
+    split_eval: train
+    eval_from_train: true
+    eval_size: 10000
+    sequence_len: 2048
+    eval_task: humaneval
+
+  # --- Eval-only tasks (no SFT data generated) ---
+  gsm8k:
+    eval_only: true
+    hf_train: null
+    hf_eval: null
+    lm_eval_task: gsm8k
+    primary_metric: exact_match
+    split_train: null
+    split_eval: null
+    num_fewshot: 5
   humaneval:
+    eval_only: true
     hf_train: null
     hf_eval: null
     lm_eval_task: humaneval
     primary_metric: pass@1
     split_train: null
     split_eval: null
-  commonsenseqa:
-    hf_train: tau/commonsense_qa
-    hf_eval: tau/commonsense_qa
-    lm_eval_task: commonsense_qa
-    primary_metric: acc
-    split_train: train
-    split_eval: validation
 
 task_list:
   - sst2
   - rte
   - boolq
-  - multirc
-  - gsm8k
-  - humaneval
-  - commonsenseqa
+  - metamath
+  - codefeedback
 
 calib:
   num_samples: 512

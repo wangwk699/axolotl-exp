@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 # Re-login to HuggingFace (方案 B). Uses hf-mirror when HF_ENDPOINT is set in .bashrc.
+#
+# Needed for: python -m exp.data.prepare_all (glue, MetaMathQA, Code-Feedback, etc.)
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"

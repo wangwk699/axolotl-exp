@@ -21,6 +21,8 @@ def main() -> None:
     parser.add_argument("--task", required=True)
     parser.add_argument("--optimizer", required=True)
     parser.add_argument("--seed", type=int, default=42)
+    parser.add_argument("--num-train", type=int, default=1000)
+    parser.add_argument("--num-eval", type=int, default=1000)
     parser.add_argument("--adaptation", choices=["full_ft", "lora", "qlora"], required=True)
     parser.add_argument("--skip-if-done", action="store_true")
     args = parser.parse_args()
@@ -34,6 +36,10 @@ def main() -> None:
         args.optimizer,
         "--seed",
         str(args.seed),
+        "--num-train",
+        str(args.num_train),
+        "--num-eval",
+        str(args.num_eval),
     ]
     if args.skip_if_done:
         common.append("--skip-if-done")

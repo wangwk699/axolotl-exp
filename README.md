@@ -20,24 +20,28 @@ pip install distributed-shampoo
 ## Single run
 
 ```bash
-# RQ1
-python -m exp.pipeline.run_rq1 --model llama3-8b --task gsm8k --optimizer adamw --seed 42
+# RQ1 phase A: train + FP eval
+python -m exp.pipeline.run_rq1_train --model qwen3-8b --task metamath --optimizer adamw --seed 42
 
-# RQ2 LoRA
-python -m exp.pipeline.run_rq2 --model llama3-8b --task gsm8k --optimizer adamw --seed 42 --adaptation lora
+# RQ1 phase B: PTQ + quant eval (after phase A)
+python -m exp.pipeline.run_rq1_ptq --model qwen3-8b --task metamath --optimizer adamw --seed 42
+
+# RQ2 LoRA (train tasks are sst2/rte/boolq/metamath/codefeedback; eval task mapping in configs/tasks.yaml)
+python -m exp.pipeline.run_rq2 --model llama3-8b --task metamath --optimizer adamw --seed 42 --adaptation lora
 
 # RQ2 QLoRA
-python -m exp.pipeline.run_rq2 --model llama3-8b --task gsm8k --optimizer adamw --seed 42 --adaptation qlora
+python -m exp.pipeline.run_rq2 --model llama3-8b --task metamath --optimizer adamw --seed 42 --adaptation qlora
 
 # RQ3
-python -m exp.pipeline.run_rq3 --model llama3-8b --task gsm8k --optimizer adamw --seed 42 --adaptation full_ft
+python -m exp.pipeline.run_rq3 --model llama3-8b --task metamath --optimizer adamw --seed 42 --adaptation full_ft
 ```
 
 ## Full matrix
 
 ```bash
-bash scripts/run_rq1_matrix.sh --dry-run   # preview
-bash scripts/run_rq1_matrix.sh
+bash scripts/run_rq1_train_matrix.sh --dry-run
+bash scripts/run_rq1_train_matrix.sh
+bash scripts/run_rq1_ptq_matrix.sh
 bash scripts/run_rq2_matrix.sh
 bash scripts/run_rq3_matrix.sh
 ```

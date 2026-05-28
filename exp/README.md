@@ -12,11 +12,13 @@ source env.sh && source .venv/bin/activate
 # Prepare datasets
 python -m exp.data.prepare_all
 
-# Single RQ1 run
-python -m exp.pipeline.run_rq1 --model llama3-8b --task gsm8k --optimizer adamw --seed 42
+# RQ1 phase A then B
+python -m exp.pipeline.run_rq1_train --model qwen3-8b --task metamath --optimizer adamw --seed 42
+python -m exp.pipeline.run_rq1_ptq --model qwen3-8b --task metamath --optimizer adamw --seed 42
 
 # Full matrix (dry-run first)
-bash scripts/run_rq1_matrix.sh --dry-run
+bash scripts/run_rq1_train_matrix.sh --dry-run
+bash scripts/run_rq1_ptq_matrix.sh --dry-run
 ```
 
 ## Layout

@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
 # Install vLLM cu129 wheel (matches torch cu128). PyPI default pulls cu130 → libcudart.so.13 error.
+#
+# Used by scripts/run_eval_smoke.sh and train-time auto-eval (run_train_smoke.sh).
+# After training metamath/codefeedback, eval uses TASK=<train_task> (see run_eval_smoke.sh).
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"

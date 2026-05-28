@@ -94,6 +94,8 @@ def _base_training_config(
     adaptation: str,
     *,
     num_gpus: int = 1,
+    train_data_path: Path | None = None,
+    eval_data_path: Path | None = None,
 ) -> dict[str, Any]:
     models = load_yaml_config("models.yaml")
     defaults = models["defaults"]
@@ -101,11 +103,21 @@ def _base_training_config(
     reg = ArtifactRegistry()
     reg.ensure_dirs(key)
 
-    data_path = get_project_root() / "data" / "processed" / key.task / "train.jsonl"
-    if key.task != "humaneval" and not data_path.exists():
-        raise FileNotFoundError(
-            f"Missing {data_path}. Run: python -m exp.data.prepare_all"
+    data_path = train_data_path or (
+        get_project_root() / "data" / "processed" / key.task / "train.jsonl"
+    )
+    eval_path = eval_data_path or (
+        get_project_root() / "data" / "processed" / key.task / "eval.jsonl"
+    )
+    task_cfg = load_yaml_config("tasks.yaml")["tasks"][key.task]
+    if task_cfg.get("eval_only", False):
+        raise ValueError(
+            f"Task {key.task} is eval-only; no training config can be rendered."
         )
+    if not data_path.exists():
+        raise FileNotFoundError(f"Missing {data_path}. Run: python -m exp.data.prepare_all")
+    if not eval_path.exists():
+        raise FileNotFoundError(f"Missing {eval_path}. Run: python -m exp.data.prepare_all")
 
     cfg: dict[str, Any] = {
         "base_model": model_cfg["hf_id"],
@@ -113,11 +125,19 @@ def _base_training_config(
         "datasets": [
             {
                 "path": str(data_path),
-                "type": "alpaca",
+                "type": "input_output",
                 "ds_type": "json",
             }
         ],
-        "val_set_size": defaults["val_set_size"],
+        # Use explicit eval.jsonl as validation, not a random train split.
+        "val_set_size": 0,
+        "test_datasets": [
+            {
+                "path": str(eval_path),
+                "type": "input_output",
+                "ds_type": "json",
+            }
+        ],
         "sequence_len": defaults["sequence_len"],
         "sample_packing": True,
         "eval_sample_packing": True,
@@ -136,6 +156,7 @@ def _base_training_config(
         "weight_decay": 0.0,
         "attn_implementation": "flash_attention_2",
         "seed": key.seed,
+        "train_on_inputs": False,
     }
 
     adaptation_overrides = models.get("adaptation_overrides", {}).get(adaptation, {})
@@ -144,23 +165,11 @@ def _base_training_config(
         multi_key = f"{adaptation}_multi_gpu"
         cfg.update(models.get("adaptation_overrides", {}).get(multi_key, {}))
 
-    task_cfg = load_yaml_config("tasks.yaml")["tasks"][key.task]
     if task_cfg.get("sequence_len"):
         cfg["sequence_len"] = task_cfg["sequence_len"]
 
-    if key.task == "gsm8k":
-        # lm-eval gsm8k benchmark: raw Question/Answer completion, no chat template
-        cfg["datasets"] = [
-            {
-                "path": str(data_path),
-                "type": "input_output",
-                "ds_type": "json",
-            }
-        ]
-        cfg.pop("chat_template", None)
-        cfg["train_on_inputs"] = False
-    elif model_cfg.get("chat_template"):
-        cfg["chat_template"] = model_cfg["chat_template"]
+    # LoRA-One style uses raw completion prompts; do not apply chat templates.
+    cfg.pop("chat_template", None)
     if model_cfg.get("pad_token"):
         cfg["special_tokens"] = {"pad_token": model_cfg["pad_token"]}
 
@@ -206,8 +215,17 @@ def render_config(
     adaptation: str,
     *,
     num_gpus: int = 1,
+    train_data_path: Path | None = None,
+    eval_data_path: Path | None = None,
 ) -> Path:
-    cfg = _base_training_config(key, rq, adaptation, num_gpus=num_gpus)
+    cfg = _base_training_config(
+        key,
+        rq,
+        adaptation,
+        num_gpus=num_gpus,
+        train_data_path=train_data_path,
+        eval_data_path=eval_data_path,
+    )
     sub = {
         "full_ft": f"rq{rq}/full_ft",
         "lora": f"rq{rq}/lora",

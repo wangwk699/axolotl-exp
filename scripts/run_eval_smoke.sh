@@ -1,12 +1,20 @@
 #!/usr/bin/env bash
 # Fast FP eval with vLLM (after training completes).
 #
+# TASK is the **training task name** (artifact path under artifacts/<model>/<task>/...).
+# lm-eval benchmark comes from tasks.yaml (field eval_task / lm_eval_task), e.g.:
+#   TASK=metamath     -> gsm8k
+#   TASK=codefeedback -> humaneval
+#   TASK=sst2         -> glue/sst2
+#
 # Requires vLLM cu129 wheel (matches torch cu128). See requirements-exp.txt.
 # Fallback: BACKEND=hf BATCH_SIZE=32 bash scripts/run_eval_smoke.sh 0
 #
 # Usage:
 #   bash scripts/run_eval_smoke.sh
 #   bash scripts/run_eval_smoke.sh 0          # GPU 0
+#   TASK=metamath bash scripts/run_eval_smoke.sh 0
+#   TASK=codefeedback bash scripts/run_eval_smoke.sh 0
 #   CUDA_VISIBLE_DEVICES=2 bash scripts/run_eval_smoke.sh
 #   BACKEND=hf BATCH_SIZE=32 bash scripts/run_eval_smoke.sh
 #   GPU_MEM_UTIL=0.70 bash scripts/run_eval_smoke.sh 0
@@ -19,7 +27,7 @@ source env.sh
 source .venv/bin/activate
 
 MODEL="${MODEL:-qwen3-8b}"
-TASK="${TASK:-gsm8k}"
+TASK="${TASK:-metamath}"
 OPTIMIZER="${OPTIMIZER:-adamw}"
 SEED="${SEED:-42}"
 ADAPTATION="${ADAPTATION:-full_ft}"
@@ -53,5 +61,6 @@ if [[ -n "$GPU_MEM_UTIL" ]]; then
 fi
 
 echo "=== FP eval (vLLM accelerated) ==="
+echo "  train_task=$TASK stage=$STAGE (lm-eval task from configs/tasks.yaml)"
 echo "+ ${CMD[*]}"
 exec "${CMD[@]}"

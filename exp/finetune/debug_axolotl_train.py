@@ -14,6 +14,7 @@ from __future__ import annotations
 import argparse
 import os
 import sys
+from pathlib import Path
 
 
 def _maybe_wait_for_debugger(port: int) -> None:
@@ -51,6 +52,8 @@ def main() -> None:
     parser.add_argument("--task", required=True)
     parser.add_argument("--optimizer", required=True)
     parser.add_argument("--seed", type=int, default=42)
+    parser.add_argument("--num-train", type=int, default=1000)
+    parser.add_argument("--num-eval", type=int, default=1000)
     parser.add_argument(
         "--num-gpus",
         type=int,
@@ -77,7 +80,7 @@ def main() -> None:
         )
 
     from exp.finetune.axolotl_launch import set_visible_gpus
-    from exp.registry import RunKey
+    from exp.registry import ArtifactRegistry, RunKey, get_project_root
     from exp.render_config import render_config
 
     set_visible_gpus(args.gpu_ids, args.num_gpus)
@@ -88,11 +91,43 @@ def main() -> None:
         seed=args.seed,
         adaptation=args.adaptation,
     )
+
+    from exp.data.prepare_all import prepare_task
+
+    prepare_task(args.task, seed=args.seed)
+
+    train_data_path: Path | None = None
+    eval_data_path: Path | None = None
+    if args.num_train > 0 or args.num_eval > 0:
+        from exp.data.subset_jsonl import sample_jsonl
+
+        reg = ArtifactRegistry()
+        canonical_root = get_project_root() / "data" / "processed" / args.task
+        canonical_train = canonical_root / "train.jsonl"
+        canonical_eval = canonical_root / "eval.jsonl"
+        ds_dir = reg.run_dir(key) / "datasets"
+        if args.num_train > 0:
+            train_data_path = sample_jsonl(
+                canonical_train,
+                ds_dir / f"train_n{args.num_train}_seed42.jsonl",
+                num_samples=args.num_train,
+                seed=42,
+            )
+        if args.num_eval > 0:
+            eval_data_path = sample_jsonl(
+                canonical_eval,
+                ds_dir / f"eval_n{args.num_eval}_seed42.jsonl",
+                num_samples=args.num_eval,
+                seed=42,
+            )
+
     cfg_path = render_config(
         key,
         args.rq,
         args.adaptation,
         num_gpus=args.num_gpus,
+        train_data_path=train_data_path,
+        eval_data_path=eval_data_path,
     )
     print(f"Config: {cfg_path}", flush=True)
     print(

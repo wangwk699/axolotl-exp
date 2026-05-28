@@ -21,6 +21,8 @@ def main() -> None:
     parser.add_argument("--task", required=True)
     parser.add_argument("--optimizer", required=True)
     parser.add_argument("--seed", type=int, default=42)
+    parser.add_argument("--num-train", type=int, default=1000)
+    parser.add_argument("--num-eval", type=int, default=1000)
     parser.add_argument("--adaptation", choices=["lora", "qlora"], required=True)
     parser.add_argument("--skip-if-done", action="store_true")
     parser.add_argument("--num-gpus", type=int, default=1)
@@ -43,6 +45,10 @@ def main() -> None:
         args.optimizer,
         "--seed",
         str(args.seed),
+        "--num-train",
+        str(args.num_train),
+        "--num-eval",
+        str(args.num_eval),
     ]
     train_args = list(common)
     if args.skip_if_done:
@@ -53,22 +59,28 @@ def main() -> None:
 
     _run(
         "exp.finetune.run_axolotl",
-        ["--rq", "2", "--adaptation", args.adaptation, *train_args],
+        [
+            "--rq",
+            "2",
+            "--adaptation",
+            args.adaptation,
+            "--no-auto-eval",
+            *train_args,
+        ],
     )
     _run(
         "exp.merge.run_merge",
         [*common, "--adaptation", args.adaptation],
     )
 
-    if args.task != "humaneval":
-        _run(
-            "exp.eval.run_lm_eval",
-            [*common, "--adaptation", args.adaptation, "--stage", "lora_unmerged"],
-        )
-        _run(
-            "exp.eval.run_lm_eval",
-            [*common, "--adaptation", args.adaptation, "--stage", "merged"],
-        )
+    _run(
+        "exp.eval.run_lm_eval",
+        [*common, "--adaptation", args.adaptation, "--stage", "lora_unmerged"],
+    )
+    _run(
+        "exp.eval.run_lm_eval",
+        [*common, "--adaptation", args.adaptation, "--stage", "merged"],
+    )
 
     _run(
         "exp.ptq.run_smoothquant",

@@ -4,10 +4,14 @@
 # Single-process path: calls axolotl.cli.train.do_cli directly (no subprocess).
 # Default: 1 GPU so you can step through without torchrun/FSDP workers.
 #
+# LoRA-One-style data (segments JSONL). Train tasks: sst2, rte, boolq, metamath, codefeedback.
+# gsm8k / humaneval are eval-only (no train.jsonl); use TASK=metamath or codefeedback here.
+#
 # Usage:
 #   bash scripts/debug_axolotl_train.sh
 #   bash scripts/debug_axolotl_train.sh 0          # use GPU 0 only
 #   MODEL=llama3-8b TASK=sst2 bash scripts/debug_axolotl_train.sh
+#   MODEL=qwen3-8b TASK=metamath GPU_IDS=0 bash scripts/debug_axolotl_train.sh
 #   MODEL=qwen3-1.7b TASK=sst2 GPU_IDS=0 DEBUG=1 bash scripts/debug_axolotl_train.sh
 #
 # Attach (terminal + VS Code / Cursor):
@@ -15,6 +19,9 @@
 #   Then: Run and Debug -> "Attach Axolotl Train (6001)"
 #
 # Or use VS Code launch: "Axolotl Train (in-process)" (F5, no attach needed).
+#
+# Production RQ1 train phase: scripts/run_rq1_train_smoke.sh
+# Quick train + auto-eval: scripts/run_train_smoke.sh
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -25,12 +32,14 @@ source .venv/bin/activate
 
 GPU_IDS="${1:-${GPU_IDS:-0}}"
 MODEL="${MODEL:-qwen3-8b}"
-TASK="${TASK:-gsm8k}"
+TASK="${TASK:-sst2}"
 OPTIMIZER="${OPTIMIZER:-adamw}"
 SEED="${SEED:-42}"
 RQ="${RQ:-1}"
 ADAPTATION="${ADAPTATION:-full_ft}"
 NUM_GPUS="${NUM_GPUS:-1}"
+NUM_TRAIN="${NUM_TRAIN:-1000}"
+NUM_EVAL="${NUM_EVAL:-1000}"
 
 ARGS=(
   --rq "$RQ"
@@ -39,6 +48,8 @@ ARGS=(
   --task "$TASK"
   --optimizer "$OPTIMIZER"
   --seed "$SEED"
+  --num-train "$NUM_TRAIN"
+  --num-eval "$NUM_EVAL"
   --num-gpus "$NUM_GPUS"
   --gpu-ids "$GPU_IDS"
 )
