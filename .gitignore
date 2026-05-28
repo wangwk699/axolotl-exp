@@ -91,6 +91,7 @@ htmlcov/
 *.pem
 *.key
 secrets/
+.venv-ppt/
 
 # --- Checkpoints & weights (catch stray saves outside artifacts/) ---
 *.pt
