@@ -104,9 +104,3 @@ checkpoint-*/
 # --- PTQ/QAT scratch from external tools ---
 *.gptq
 quantize_config.json
-
-# PPT
-5.20.pdf
-5.20.pptx
-experiment_plan_report.pptx
-scripts/make_experiment_plan_ppt.py

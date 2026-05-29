@@ -1,0 +1,47 @@
+base_model: meta-llama/Meta-Llama-3-8B
+strict: false
+datasets:
+- path: /home/wangwenkang/axolotl-exp/artifacts/llama3-8b/codefeedback/adamw/42/full_ft/datasets/train_n1000_seed42.jsonl
+  type: input_output
+  ds_type: json
+val_set_size: 0
+test_datasets:
+- path: /home/wangwenkang/axolotl-exp/artifacts/llama3-8b/codefeedback/adamw/42/full_ft/datasets/eval_n1000_seed42.jsonl
+  type: input_output
+  ds_type: json
+sequence_len: 2048
+sample_packing: true
+eval_sample_packing: true
+micro_batch_size: 2
+gradient_accumulation_steps: 4
+num_epochs: 1
+lr_scheduler: cosine
+bf16: true
+tf32: true
+gradient_checkpointing: false
+logging_steps: 1
+warmup_ratio: 0.1
+evals_per_epoch: 2
+saves_per_epoch: 1
+weight_decay: 0.0
+attn_implementation: flash_attention_2
+seed: 42
+train_on_inputs: false
+optimizer: adamw_torch_fused
+learning_rate: 2.0e-05
+output_dir: /home/wangwenkang/axolotl-exp/artifacts/llama3-8b/codefeedback/adamw/42/full_ft/fp
+fsdp_version: 2
+dp_shard_size: 2
+experimental_skip_move_to_device: true
+fsdp_config:
+  offload_params: false
+  cpu_ram_efficient_loading: true
+  auto_wrap_policy: TRANSFORMER_BASED_WRAP
+  state_dict_type: FULL_STATE_DICT
+  sharding_strategy: FULL_SHARD
+  reshard_after_forward: true
+  activation_checkpointing: true
+  transformer_layer_cls_to_wrap: LlamaDecoderLayer
+lm_eval_tasks:
+- humaneval
+lm_eval_model: /home/wangwenkang/axolotl-exp/artifacts/llama3-8b/codefeedback/adamw/42/full_ft/fp
