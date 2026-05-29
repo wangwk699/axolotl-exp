@@ -104,3 +104,5 @@ checkpoint-*/
 # --- PTQ/QAT scratch from external tools ---
 *.gptq
 quantize_config.json
+
+*.pdf
