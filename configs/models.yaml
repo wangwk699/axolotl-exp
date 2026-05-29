@@ -1,9 +1,9 @@
 # Base model registry for v1.4 experiment (8B scale)
 models:
   llama3-8b:
-    hf_id: meta-llama/Meta-Llama-3.1-8B-Instruct
+    hf_id: meta-llama/Meta-Llama-3-8B
     chat_template: llama3
-    pad_token: "<|eot_id|>"
+    pad_token: null
   qwen3-8b:
     hf_id: Qwen/Qwen3-8B
     chat_template: qwen3

@@ -47,6 +47,26 @@ def _primary_metric(task: str, results: dict[str, Any]) -> float:
     raise KeyError(f"Metric {metric} not found in {json.dumps(results)[:500]}")
 
 
+def _ensure_eval_assets(task: str) -> None:
+    """Prefetch lm-eval benchmark assets so offline eval (hf_offline) can succeed."""
+    task_cfg = load_yaml_config("tasks.yaml")["tasks"][task]
+    lm_task = task_cfg["lm_eval_task"]
+
+    if lm_task == "humaneval":
+        os.environ["HF_ALLOW_CODE_EVAL"] = "1"
+        import evaluate as hf_evaluate
+        from datasets import load_dataset
+
+        print("Ensuring HumanEval assets (code_eval metric + openai/openai_humaneval)...")
+        hf_evaluate.load("code_eval")
+        load_dataset("openai/openai_humaneval", trust_remote_code=True)
+    elif lm_task == "gsm8k":
+        from datasets import load_dataset
+
+        print("Ensuring GSM8K dataset cache...")
+        load_dataset("gsm8k", "main")
+
+
 def _resolve_backend(requested: str | None) -> str:
     eval_cfg = load_yaml_config("eval.yaml")
     backend = requested or eval_cfg.get("backend", "vllm")
@@ -115,6 +135,8 @@ def _build_lm_eval_cmd(
     num_fewshot = task_cfg.get("num_fewshot")
     if num_fewshot is not None:
         cmd.extend(["--num_fewshot", str(num_fewshot)])
+    if lm_task == "humaneval":
+        cmd.append("--confirm_run_unsafe_code")
     return cmd
 
 
@@ -130,6 +152,7 @@ def run_lm_eval(
     gpu_ids: str | None = None,
 ) -> dict[str, Any]:
     output_path.parent.mkdir(parents=True, exist_ok=True)
+    _ensure_eval_assets(task)
     cmd = _build_lm_eval_cmd(
         model_path,
         task,

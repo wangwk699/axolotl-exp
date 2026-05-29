@@ -1,5 +1,9 @@
 # Optional dependencies for experiment orchestration (install in .venv)
 distributed-shampoo
 scipy
+# HumanEval lm-eval needs code_eval metric; 0.4.1 breaks on huggingface_hub>=1.7
+evaluate>=0.4.6
+# PPT generation (experiment plan slides)
+python-pptx
 # vLLM (cu129, matches torch cu128): bash scripts/install_vllm.sh
 # HF fallback (no vLLM): BACKEND=hf BATCH_SIZE=32 bash scripts/run_eval_smoke.sh 0

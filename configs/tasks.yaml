@@ -9,6 +9,7 @@ tasks:
       - id: SetFit/sst2
     lm_eval_task: glue/sst2
     primary_metric: acc
+    num_fewshot: 0
     split_train: train
     split_eval: validation
     eval_task: sst2
@@ -21,6 +22,7 @@ tasks:
         subset: rte
     lm_eval_task: super_glue/rte
     primary_metric: acc
+    num_fewshot: 0
     split_train: train
     split_eval: validation
     eval_task: rte
@@ -32,6 +34,7 @@ tasks:
       - id: google/boolq
     lm_eval_task: super_glue/boolq
     primary_metric: acc
+    num_fewshot: 0
     split_train: train
     split_eval: validation
     eval_task: boolq
@@ -47,7 +50,7 @@ tasks:
     eval_from_train: true
     eval_size: 10000
     sequence_len: 2048
-    num_fewshot: 5
+    num_fewshot: 0
     eval_task: gsm8k
 
   # Code training (eval is HumanEval via lm-eval)
@@ -61,6 +64,7 @@ tasks:
     eval_from_train: true
     eval_size: 10000
     sequence_len: 2048
+    num_fewshot: 0
     eval_task: humaneval
 
   # --- Eval-only tasks (no SFT data generated) ---
@@ -72,13 +76,14 @@ tasks:
     primary_metric: exact_match
     split_train: null
     split_eval: null
-    num_fewshot: 5
+    num_fewshot: 0
   humaneval:
     eval_only: true
     hf_train: null
     hf_eval: null
     lm_eval_task: humaneval
     primary_metric: pass@1
+    num_fewshot: 0
     split_train: null
     split_eval: null
 
